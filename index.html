@@ -1965,12 +1965,13 @@ function parseStatementText(text) {
       .slice(0, 40);
 
     if (!storeName) continue;
+    const cleanedName = cleanStoreName(storeName);
 
     results.push({
       date: dateStr,
-      name: storeName,
+      name: cleanedName,
       amount,
-      category: autoCategory(storeName),
+      category: autoCategory(cleanedName),
       selected: true
     });
   }
@@ -1979,26 +1980,99 @@ function parseStatementText(text) {
 }
 
 // 店名からカテゴリを自動推定
+// 全角英数→半角、半角カタカナ→ひらがな（カテゴリ判定用正規化）
+function normalizeForCategory(name) {
+  let s = (name || '').toLowerCase();
+  // 全角英数→半角
+  s = s.replace(/[ａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  // 半角カタカナ→全角カタカナ（濁点合成）
+  const hkMap = {'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー','ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ','ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ','ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ','ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト','ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ','ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ','ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ','ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ','ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ','ﾜ':'ワ','ﾝ':'ン','ﾞ':'゛','ﾟ':'゜'};
+  s = s.replace(/[ｦ-ﾟ]/g, c => hkMap[c] || c);
+  // 濁点・半濁点を前の文字に合成（例：カﾞ→ガ）
+  s = s.replace(/([カキクケコサシスセソタチツテトハヒフヘホ])゛/g, (_,c)=>'ガギグゲゴザジズゼゾダヂヅデドバビブベボ'['カキクケコサシスセソタチツテトハヒフヘホ'.indexOf(c)]);
+  s = s.replace(/([ハヒフヘホ])゜/g, (_,c)=>'パピプペポ'['ハヒフヘホ'.indexOf(c)]);
+  // 全角カタカナ→ひらがな（マッチ範囲を広げる）
+  s = s.replace(/[ァ-ン]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  return s;
+}
+
 function autoCategory(name) {
   if (!name) return 'other';
-  const n = name.toLowerCase();
-  if (/スーパー|イオン|ヨーカドー|西友|コープ|生協|業務スーパー|マックス|ヤオコー|フードワン/.test(n)) return 'food';
-  if (/コンビニ|セブン|ファミマ|ローソン|ミニストップ|デイリー/.test(n)) return 'food';
-  if (/マクドナルド|マック|すき家|吉野家|松屋|ガスト|サイゼ|外食|レストラン|ランチ|居酒屋|焼肉|寿司|ラーメン|カフェ|スタバ/.test(n)) return 'food';
-  if (/ドラッグ|薬|ウエルシア|マツキヨ|ツルハ|コクミン|日用|洗剤|シャンプー/.test(n)) return 'daily';
-  if (/電気|ガス|水道|東京電力|関西電力|東京ガス|大阪ガス|電力|光熱/.test(n)) return 'utility';
-  if (/家賃|管理費|賃貸|部屋代|住宅/.test(n)) return 'housing';
-  if (/ドコモ|ソフトバンク|au|楽天モバイル|y!mobile|通信|インターネット|wifi|nhk/.test(n)) return 'telecom';
-  if (/病院|クリニック|診療|薬局|医療|歯科|内科|整形|健康診断/.test(n)) return 'health';
-  if (/ガソリン|駐車|高速|etc|タクシー|uber|自動車|カー/.test(n)) return 'car';
-  if (/保険|生命保険|損保|共済/.test(n)) return 'insurance';
-  if (/amazon|楽天|ヤフー|yahoo|メルカリ|zozotown|通販|ショッピング/.test(n)) return 'daily';
-  if (/映画|ネットフリックス|netflix|spotify|youtube|アマプラ|ディズニー|遊園地|カラオケ|ゲーム/.test(n)) return 'entertain';
-  if (/美容|ヘアカット|美容院|エステ|ネイル|化粧|コスメ|ファッション|服|洋服|ユニクロ|zara/.test(n)) return 'fashion';
-  if (/ホテル|旅館|新幹線|飛行機|旅行|jr|ana|jal/.test(n)) return 'travel';
-  if (/nisa|ideco|投資|証券|積立/.test(n)) return 'saving';
-  if (/幼稚園|保育|塾|学習|スクール|習い事|学校|教育/.test(n)) return 'education';
+  const n = normalizeForCategory(name);   // ひらがな正規化済み（カタカナ→ひらがな変換）
+  const o = (name || '').toLowerCase();   // 元の文字列（小文字化のみ）— 漢字マッチ用
+  // 両方でテストするヘルパー
+  const m = pat => pat.test(n) || pat.test(o);
+
+  // 食費（スーパー・コンビニ・飲食）
+  if (m(/スーパー|いおん|よーかどー|西友|こーぷ|生協|業務スーパー|ゆにばーす|まえだストア|おかもと/)) return 'food';
+  if (m(/コンビニ|セブン|ファミマ|ファミリーマート|ローソン|ミニストップ|デイリー/)) return 'food';
+  if (m(/マクドナルド|マック|すき家|吉野家|よしのや|松屋|がすと|サイゼ|外食|レストラン|ランチ|居酒屋|焼肉|寿司|すしろー|ラーメン|カフェ|スタバ|もすバーガー|ケンタ|ほっともっと|デザートショップ|アイスクリーム|パティスリー|いっしんてい/)) return 'food';
+  // 日用品
+  if (m(/ドラッグ|薬局|薬店|ウエルシア|マツキヨ|つるは|コクミン|日用|洗剤|シャンプー|ダイソー|どんきほーて/)) return 'daily';
+  if (m(/amazon|楽天|ヤフー|yahoo|メルカリ|zozotown|通販|ショッピング|shein|devirock|らくてんいちば/)) return 'daily';
+  // 水道光熱（漢字は o、ひらがな変換は n で両方カバー）
+  if (m(/電気|ガス代|水道|東京電力|東北電力|関西電力|東京ガス|大阪ガス|電力|光熱/)) return 'utility';
+  if (/とうほくでんりよく|とうきょうでんりよく|かんさいでんりよく/.test(n)) return 'utility';
+  // 住宅
+  if (m(/家賃|管理費|賃貸|部屋代|住宅/)) return 'housing';
+  // 通信費
+  if (m(/どこも|ドコモ|ソフトバンク|softbank|au|楽天モバイル|y!mobile|通信費|インターネット|wifi|nhk/)) return 'telecom';
+  if (/らくてんもばいる/.test(n)) return 'telecom';
+  // 娯楽・サブスク
+  if (m(/disney.*plus|ディズニープラス|apple.*bill|google.*play|netflix|spotify|youtube|アマプラ|prime.*video/)) return 'entertain';
+  if (/でぃずにーぷらす|てﾞぃずにーぷらす/.test(n)) return 'entertain';
+  // 医療
+  if (m(/病院|クリニック|診療所|薬局|医療|歯科|内科|整形|健康診断|県民生協|けんみんせいきょう|みんせいきょう/)) return 'health';
+  if (/せいきょう/.test(n) && !/楽天/.test(o)) return 'health';
+  // 自動車・交通（ETC は o で ASCII 判定、みちのく等は n で判定）
+  if (m(/ガソリン|駐車|高速道路|タクシー|uber|自動車|etc/)) return 'car';
+  if (/みちのく|いかりがせき|なみおか/.test(n)) return 'car';
+  // 保険
+  if (m(/保険|生命保険|損保|共済/)) return 'insurance';
+  // 娯楽
+  if (m(/映画|カラオケ|ゲーム|トイザらス|きもの|レンタル|ネットレンタル/)) return 'entertain';
+  if (/といざらす/.test(n)) return 'entertain';
+  // ファッション
+  if (m(/美容院|ヘアカット|エステ|ネイル|化粧品|コスメ|ファッション|ユニクロ|zara|リカープラザ/)) return 'fashion';
+  // 旅行
+  if (m(/ホテル|旅館|新幹線|飛行機|旅行|ana|jal/)) return 'travel';
+  // 貯蓄
+  if (m(/nisa|ideco|投資|証券|積立/)) return 'saving';
+  // 教育
+  if (m(/幼稚園|保育|学習塾|スクール|習い事|学校|教育/)) return 'education';
+  if (/あおもりけんえいあさむし/.test(n)) return 'education';
   return 'other';
+}
+
+// カード会社プレフィックス・末尾コードを除去してクリーンな店名を返す
+function cleanStoreName(name) {
+  // [\s　] = ASCII空白 + 全角スペース(U+3000) 両対応
+  let n = name
+    // VISA国内/海外利用 + VS（ASCII/全角両対応）
+    .replace(/^ＶＩＳＡ[\s　]*[国海外内]{2}利用[\s　]*(?:VS|ＶＳ)[\s　]*/i, '')
+    // VISA海外利用（VSなし）
+    .replace(/^ＶＩＳＡ[\s　]*[国海外内]{2}利用[\s　]*/i, '')
+    // JCB国内利用 QP（QP は ASCII/全角どちらでも対応）
+    .replace(/^ＪＣＢ[\s　]*[国内]{2}利用[\s　]*(?:QP|ＱＰ)[\s　]*/i, '')
+    // ETCカード売上
+    .replace(/^ＥＴＣカード売上[\s　]*/i, 'ETC ')
+    // 楽天SP
+    .replace(/^楽天(?:ＳＰ|SP)[\s　]+/, '')
+    // 末尾の楽天市場コード「ﾗｸﾃﾝｲﾁﾊﾞ712345」「楽天市場店」
+    .replace(/[\s　]*ﾗｸﾃﾝｲﾁﾊﾞ\d+[\s　]*$/, '')
+    .replace(/[\s　]*楽天市場店[\s　]*$/, '')
+    // 末尾の半角カタカナ地名（コンビニ店舗名など：「ﾛｰｿﾝ　ｱｵﾓﾘｶﾅｻﾞﾜ」の地名部分）
+    .replace(/[\s　]+[ｦ-ﾟ]{3,}[\s　]*$/, '')
+    // 末尾の長い数字コード（5桁以上）・複合コード（例: 0818940106857 01039）
+    .replace(/[\s　]+\d{5,}(?:[\s　]+\d+)*[\s　]*$/, '')
+    // 末尾「〇〇店」地名サフィックス（シーナシーナ青森店 など）
+    .replace(/[\s　]+\S{2,}[店号舗][\s　]*$/, '')
+    // アプリ + 数字コード
+    .replace(/アプリ[\s　]+\d+$/, 'アプリ')
+    // 連続スペース（全角含む）→ 1スペース
+    .replace(/[\s　]{2,}/g, ' ')
+    .trim();
+  return n || name;
 }
 
 // varName: グローバル配列名の文字列。例: 'parsedCardItems', 'parsedCsvItems', 'parsedPdfItems'
@@ -2205,6 +2279,7 @@ function parseCsvContent(text, filename) {
     }
     if (!name) continue;
     if (/日付|年月日|date|利用日|お支払日/i.test(name)) continue;
+    name = cleanStoreName(name); // カードプレフィックス・末尾コード除去
     results.push({ date: dateStr, name, amount, category: autoCategory(name), selected: true });
   }
   return results;
