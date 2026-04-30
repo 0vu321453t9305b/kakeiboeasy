@@ -2462,8 +2462,9 @@ async function handlePdfFile(e) {
 
     progEl.style.display = 'none';
 
-    if (meaningful.length < 30) {
+    if (meaningful.length < 10) {
       // スキャンPDF（画像PDF）は非対応
+      console.warn('[PDF] スキャン判定: meaningful=' + meaningful.length);
       showToast('⚠️ このPDFはスキャン画像のため読み取れません。デジタル明細PDFをお使いください');
     } else {
       // ── 方式A/B（行再構成）と方式C（日付アンカー）を比較して多い方を採用 ──
