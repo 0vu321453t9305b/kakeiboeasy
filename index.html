@@ -766,6 +766,8 @@
         <div style="display:flex;gap:6px;flex-wrap:wrap" id="member-filter-btns"></div>
       </div>
 
+      <!-- 設定促進バナー -->
+      <div id="setup-banner" style="display:none;margin:8px 16px 0"></div>
       <!-- Backup reminder banner (rendered by JS) -->
       <div id="backup-banner" style="display:none;margin:8px 16px 0"></div>
 
@@ -779,12 +781,12 @@
             <div class="hero-stat-value" id="dash-fixed-expense">¥0</div>
           </div>
           <div class="hero-stat">
-            <div class="hero-stat-label">支出合計</div>
-            <div class="hero-stat-value" id="dash-total-expense">¥0</div>
-          </div>
-          <div class="hero-stat">
             <div class="hero-stat-label">残り予算</div>
             <div class="hero-stat-value" id="dash-remaining">¥0</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-label">貯蓄額</div>
+            <div class="hero-stat-value" id="dash-savings">¥0</div>
           </div>
         </div>
       </div>
@@ -942,66 +944,8 @@
         </div>
       </div>
 
-      <!-- ── タブ2: PDF・CSV（file）── -->
-      <div id="receipt-tab-file" style="display:none; padding:0 16px 16px">
-
-        <!-- スマホ専用注意 -->
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin:12px 0 8px;font-size:12px;color:#1e40af;line-height:1.6">
-          📱 <strong>このアプリはスマートフォン専用です。</strong><br>PCで開いた場合、ファイル読込が正常に動作しないことがあります。
-        </div>
-
-        <!-- === CSVセクション === -->
-        <div style="margin:12px 0 4px;font-size:13px;font-weight:700;color:var(--gray-700)">📊 CSVファイル（銀行・カード）</div>
-        <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px;line-height:1.6">
-          カード会社・銀行アプリからエクスポートしたCSVを読み込みます。
-        </div>
-        <label style="display:block;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:12px;padding:20px;text-align:center;cursor:pointer">
-          <div style="font-size:28px">📂</div>
-          <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:4px">CSVファイルを選択</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">.csv / .txt</div>
-          <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(event)">
-        </label>
-        <div id="csv-parse-result" style="display:none; margin-top:12px">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:4px">
-            📋 CSV解析結果 <span id="csv-parse-count" style="color:var(--primary)"></span>
-          </div>
-          <div style="font-size:11px;color:var(--gray-500);margin-bottom:8px">店名・金額・日付・カテゴリは直接編集できます</div>
-          <div id="csv-parse-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:10px;padding:4px 0"></div>
-          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-primary" style="flex:2;min-width:0" onclick="applyCsvStatement()">✅ 選択した項目を一括登録</button>
-            <button class="btn-secondary" style="flex:1;min-width:0;font-size:12px" onclick="removeDuplicates('parsedCsvItems','csv-parse-list','csv-parse-count')">🗑 重複を除外</button>
-            <button class="btn-secondary" style="flex:0 0 auto" onclick="clearCsvStatement()">🔄</button>
-          </div>
-        </div>
-
-        <div style="margin:20px 0 4px;border-top:1px solid var(--gray-200);padding-top:16px;font-size:13px;font-weight:700;color:var(--gray-700)">📄 PDFファイル（カード明細）</div>
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#1e40af;line-height:1.7">
-          📄 楽天カード・VISAなどのカード会社サイトからダウンロードしたPDFを読み込みます。<br>
-          <span style="color:#6b7280">※スキャン画像のPDFは非対応です。マイページからダウンロードしたPDFをご利用ください。</span>
-        </div>
-        <label style="display:block;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:12px;padding:20px;text-align:center;cursor:pointer">
-          <div style="font-size:28px">📄</div>
-          <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:4px">PDFファイルを選択</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">.pdf</div>
-          <input type="file" id="pdf-file-input" accept=".pdf" style="display:none" onchange="handlePdfFile(event)">
-        </label>
-        <div id="pdf-progress" style="display:none;text-align:center;padding:12px;font-size:13px;color:var(--gray-500)">
-          ⏳ PDFを解析中…
-        </div>
-        <div id="pdf-parse-result" style="display:none; margin-top:12px">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:4px">
-            📋 PDF解析結果 <span id="pdf-parse-count" style="color:var(--primary)"></span>
-          </div>
-          <div style="font-size:11px;color:var(--gray-500);margin-bottom:8px">店名・金額・日付・カテゴリは直接編集できます</div>
-          <div id="pdf-parse-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:10px;padding:4px 0"></div>
-          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-primary" style="flex:2;min-width:0" onclick="applyPdfStatement()">✅ 選択した項目を一括登録</button>
-            <button class="btn-secondary" style="flex:1;min-width:0;font-size:12px" onclick="removeDuplicates('parsedPdfItems','pdf-parse-list','pdf-parse-count')">🗑 重複を除外</button>
-            <button class="btn-secondary" style="flex:0 0 auto" onclick="clearPdfResult()">🔄</button>
-          </div>
-        </div>
-
-      </div>
+      <!-- ── タブ2: PDF・CSV（削除済み）── -->
+      <div id="receipt-tab-file" style="display:none"></div>
 
       <!-- ── タブ3: 手入力（manual）── -->
       <div id="receipt-tab-manual" style="display:none; padding:0 16px 16px">
@@ -1035,7 +979,16 @@
 
         <button class="btn-primary"
           style="width:100%;font-size:18px;font-weight:700;padding:16px;margin-top:8px;border-radius:14px"
-          onclick="applyManualEntry()">＋ 登録する</button>
+          onclick="applyManualEntry()">＋ 支出を登録</button>
+
+        <!-- 収入登録への誘導 -->
+        <div style="margin-top:14px;text-align:center;font-size:13px;color:var(--gray-500)">
+          給与・収入を記録する場合は
+          <button onclick="showScreen('input');setType('income')"
+            style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">
+            💰 収入を登録 →
+          </button>
+        </div>
       </div>
 
       <div style="height:16px"></div>
@@ -1115,13 +1068,20 @@
     <!-- ========== SCREEN: SETTINGS ========== -->
     <div class="screen" id="screen-settings">
       <div class="card">
-        <div class="card-title">収入設定</div>
+        <div class="card-title">収入・予算設定</div>
         <div class="setting-item">
           <div>
             <div class="setting-label">月収（手取り）</div>
             <div class="setting-sub">毎月の手取り収入</div>
           </div>
           <input type="number" class="setting-input" id="set-income" placeholder="例: 300000" onchange="saveSettings()">
+        </div>
+        <div class="setting-item">
+          <div>
+            <div class="setting-label">変動費予算</div>
+            <div class="setting-sub">食費・日用品など変動費の月予算</div>
+          </div>
+          <input type="number" class="setting-input" id="set-variable-budget" placeholder="例: 80000" onchange="saveSettings()">
         </div>
         <div class="setting-item">
           <div>
@@ -1437,12 +1397,12 @@ const CATEGORIES = {
     { key: 'education',  emoji: '🎓', name: '教育',       type: 'fixed',    color: '#ec4899' },
     { key: 'telecom',    emoji: '📱', name: '通信費',     type: 'fixed',    color: '#06b6d4' },
     { key: 'health',     emoji: '🏥', name: '医療・健康', type: 'variable', color: '#ef4444' },
-    { key: 'car',        emoji: '🚙', name: '自動車',     type: 'variable', color: '#f97316' },
+    { key: 'car',        emoji: '🚗', name: '交通費',     type: 'variable', color: '#f97316' },
     { key: 'insurance',  emoji: '💊', name: '保険',       type: 'fixed',    color: '#84cc16' },
     { key: 'tax',        emoji: '💲', name: '税・社会保障',type: 'fixed',   color: '#6b7280' },
-    { key: 'entertain',  emoji: '🎭', name: '娯楽・交際', type: 'variable', color: '#f43f5e' },
+    { key: 'entertain',  emoji: '🎮', name: '娯楽・交際', type: 'variable', color: '#f43f5e' },
     { key: 'eatout',     emoji: '🍺', name: '外食',       type: 'variable', color: '#fb923c' },
-    { key: 'fashion',    emoji: '👗', name: '服飾・美容', type: 'variable', color: '#a855f7' },
+    { key: 'fashion',    emoji: '👕', name: '衣服・美容', type: 'variable', color: '#a855f7' },
     { key: 'travel',     emoji: '✈️', name: '旅行',       type: 'variable', color: '#0ea5e9' },
     { key: 'special',    emoji: '⭐', name: '特別支出',   type: 'variable', color: '#eab308' },
     { key: 'saving',     emoji: '💰', name: '貯蓄・投資', type: 'fixed',    color: '#4f6ef7' },
@@ -1608,10 +1568,16 @@ function renderHome() {
   const fixedExpense = expEntries.filter(e => (CAT_MAP[e.category]?.type) === 'fixed')
     .reduce((s, e) => s + e.amount, 0);
 
+  // 残り予算: 変動費予算が設定されていればそれを使い、なければ収入ベース
+  const variableBudget = settings.variableBudget || 0;
+  const remaining = variableBudget > 0
+    ? Math.max(0, variableBudget - variableExpense)
+    : Math.max(0, income - totalExpense);
+
   document.getElementById('dash-variable-expense').textContent = fmt(variableExpense);
   document.getElementById('dash-fixed-expense').textContent = '¥' + fmt(fixedExpense);
-  document.getElementById('dash-total-expense').textContent = '¥' + fmt(totalExpense);
-  document.getElementById('dash-remaining').textContent = '¥' + fmt(Math.max(0, income - totalExpense));
+  document.getElementById('dash-remaining').textContent = '¥' + fmt(remaining);
+  document.getElementById('dash-savings').textContent = '¥' + fmt(Math.max(0, savings));
 
   // 固定費サマリーカード
   const fixedCard = document.getElementById('fixed-summary-card');
@@ -1638,6 +1604,7 @@ function renderHome() {
   renderRingChart(Math.max(0, Math.min(100, savingsRate)));
   renderCatBreakdown(monthEntries, variableExpense);
   renderRecentEntries(monthEntries.slice(0, 6));
+  renderSetupBanner(settings);
   renderBackupBanner();
 }
 
@@ -1864,11 +1831,11 @@ function applyManualEntry() {
   addEntry({ type: 'expense', amount, date, category: manualSelectedCat || 'other', memo, member });
   showToast(`✅ ¥${fmt(amount)} を登録しました`);
 
-  // 金額・メモのみクリア（日付・カテゴリは維持して連続入力しやすく）
+  // 金額・メモのみクリア（日付・カテゴリは維持）
   document.getElementById('manual-amount').value = '';
   if (document.getElementById('manual-memo')) document.getElementById('manual-memo').value = '';
-  // 金額欄にフォーカスを戻す
-  setTimeout(() => document.getElementById('manual-amount')?.focus(), 100);
+  // ホームに戻って結果を確認できるようにする
+  showScreen('home');
 }
 
 // ================================================================
@@ -2408,171 +2375,8 @@ function clearCsvStatement() {
 
 // ================================================================
 // RECEIPT TAB: PDF ファイル読み込み（動的 pdf.js ロード）+ OCR
-// ================================================================
-let parsedPdfItems = [];
-
-// PDF.js の動的ロード（Worker完全無効化 / Android Chrome対応）
-async function loadPdfJs() {
-  if (window.pdfjsLib) return;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = resolve; s.onerror = reject;
-    document.head.appendChild(s);
-  });
-  // Workerを完全無効化（空文字列でfakeWorkerモード）
-  // Android ChromeはWorkerスクリプトを別オリジンから読めないため
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-}
-
-// Tesseract.js の動的ロード（初回のみCDNから取得）
-function showPdfParseResult(items, label) {
-  if (items.length === 0) {
-    showToast('⚠️ 明細を読み取れませんでした。デジタルPDF（カード会社マイページ）をご利用ください');
-    return;
-  }
-  parsedPdfItems = markDuplicates(items);
-  renderParsedList('pdf-parse-list', parsedPdfItems, 'parsedPdfItems');
-  const dupCount = parsedPdfItems.filter(i => i.duplicate).length;
-  document.getElementById('pdf-parse-count').textContent =
-    `${items.length}件検出（${label}）` + (dupCount ? `（⚠️ 重複 ${dupCount}件）` : '');
-  document.getElementById('pdf-parse-result').style.display = '';
-  showToast(`✅ ${items.length}件の明細を読み込みました`);
-}
-
-async function handlePdfFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  await loadPdfJs();
-
-  const progEl = document.getElementById('pdf-progress');
-  progEl.style.display = '';
-  progEl.textContent = '⏳ PDFを解析中…';
-
-  try {
-    const ab  = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({
-      data: ab,
-      worker: null,
-    }).promise;
-    // 暗号化チェック
-    const pdfInfo = await pdf.getMetadata().catch(() => null);
-    console.log('[PDF DEBUG] メタデータ:', pdfInfo);
-    const perms = await pdf.getPermissions().catch(() => null);
-    console.log('[PDF DEBUG] パーミッション:', perms);
-
-    // ── テキスト抽出（3方式を試して最良の結果を使用）──
-    let allRawItems = [];
-    let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page  = await pdf.getPage(i);
-      const tc    = await page.getTextContent();
-      const items = tc.items.filter(it => it.str && it.str.trim());
-      if (items.length === 0) continue;
-      allRawItems.push(...items);
-
-      // 方式A: hasEOL優先
-      const hasEolSupport = items.some(it => it.hasEOL);
-      if (hasEolSupport) {
-        const lines = [];
-        let cur = [];
-        for (const item of items) {
-          cur.push(item.str.trim());
-          if (item.hasEOL) { if (cur.length) lines.push(cur.filter(Boolean).join('\t')); cur = []; }
-        }
-        if (cur.length) lines.push(cur.filter(Boolean).join('\t'));
-        fullText += lines.join('\n') + '\n';
-      } else {
-        // 方式B: Y座標グループ化（±8pt）
-        const sorted = [...items].sort((a, b) =>
-          (b.transform ? b.transform[5] : 0) - (a.transform ? a.transform[5] : 0));
-        const lines = [];
-        let cur = [], lineStartY = null;
-        for (const item of sorted) {
-          const y = item.transform ? item.transform[5] : 0;
-          if (lineStartY === null || Math.abs(y - lineStartY) < 8) {
-            cur.push(item);
-          } else {
-            if (cur.length) {
-              cur.sort((a, b) => (a.transform ? a.transform[4] : 0) - (b.transform ? b.transform[4] : 0));
-              lines.push(cur.map(it => it.str.trim()).filter(Boolean).join('\t'));
-            }
-            cur = [item]; lineStartY = y;
-          }
-          if (lineStartY === null) lineStartY = y;
-        }
-        if (cur.length) {
-          cur.sort((a, b) => (a.transform ? a.transform[4] : 0) - (b.transform ? b.transform[4] : 0));
-          lines.push(cur.map(it => it.str.trim()).filter(Boolean).join('\t'));
-        }
-        fullText += lines.join('\n') + '\n';
-      }
-    }
-
-    // 方式C: 全アイテムをスペース結合した生テキスト（日付アンカーパーサー用）
-    const rawJoined = allRawItems.map(it => it.str).join(' ');
-    const meaningful = rawJoined.replace(/\s/g, '');
-
-    progEl.style.display = 'none';
-
-    // ★画面表示デバッグ（確認後に削除）
-    const itemsAB_pre = parseStatementText(fullText);
-    const itemsC_pre  = parseStatementByDate(rawJoined);
-    const debugInfo = [
-      '📄 総ページ数: ' + pdf.numPages,
-      '📝 テキスト件数: ' + allRawItems.length,
-      '🔤 文字数: ' + meaningful.length,
-      '📊 方式AB件数: ' + itemsAB_pre.length,
-      '📊 方式C件数: ' + itemsC_pre.length,
-      '--- rawJoined先頭200字 ---',
-      rawJoined.slice(0, 200)
-    ].join('\n');
-    const dbgBox = document.createElement('div');
-    dbgBox.style.cssText = 'position:fixed;top:60px;left:8px;right:8px;background:#1e1e1e;color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow-y:auto;font-family:monospace';
-    dbgBox.textContent = debugInfo;
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕ 閉じる';
-    closeBtn.style.cssText = 'display:block;margin-top:8px;background:#555;color:#fff;border:none;padding:6px 16px;border-radius:6px;font-size:13px;width:100%';
-    closeBtn.onclick = () => dbgBox.remove();
-    dbgBox.appendChild(closeBtn);
-    document.body.appendChild(dbgBox);
-
-    if (meaningful.length < 10) {
-      showToast('⚠️ このPDFはスキャン画像のため読み取れません。デジタル明細PDFをお使いください');
-    } else {
-      const itemsAB = itemsAB_pre;
-      const itemsC  = itemsC_pre;
-      const best    = itemsAB.length >= itemsC.length ? itemsAB : itemsC;
-      const label   = itemsAB.length >= itemsC.length ? 'デジタルPDF' : 'デジタルPDF(日付解析)';
-      if (best.length > 0) {
-        showPdfParseResult(best, label);
-      } else {
-        showToast('⚠️ 明細を読み取れませんでした。楽天カードなどのデジタル明細PDFをご利用ください');
-      }
-    }
-  } catch (err) {
-    progEl.style.display = 'none';
-    showToast('⚠️ PDFの読み込みに失敗しました（対応形式: クレジットカード明細PDF）');
-    console.error(err);
-  }
-}
-
-
-function applyPdfStatement() {
-  const selected = parsedPdfItems.filter(i => i.selected);
-  if (selected.length === 0) { showToast('取り込む項目を選択してください'); return; }
-  selected.forEach(item => addEntry({ type: 'expense', amount: item.amount, date: item.date, category: item.category, memo: item.name }));
-  showToast(`✅ ${selected.length}件を登録しました`);
-  clearPdfResult(); // parsedPdfItems クリア + display:none + input リセットを一元管理
-  showScreen('home');
-}
-
-function clearPdfResult() {
-  parsedPdfItems = [];
-  document.getElementById('pdf-parse-result').style.display = 'none';
-  const inp = document.getElementById('pdf-file-input');
-  if (inp) inp.value = '';
-}
+// PDF機能は削除済み
+function clearPdfResult() { /* no-op */ }
 
 // ================================================================
 // QRコード生成（このファイルのURLをそのままQR化）
@@ -2983,6 +2787,7 @@ function closeModal(e) {
 function renderSettings() {
   const s = getSettings();
   document.getElementById('set-income').value = s.income || '';
+  document.getElementById('set-variable-budget').value = s.variableBudget || '';
   document.getElementById('set-bonus').value = s.bonus || '';
   renderFamilyMembers(s.family || []);
   renderFixedExpenseList();
@@ -3147,8 +2952,10 @@ function applyFixedExpenses() {
 function saveSettings() {
   const s = getSettings();
   s.income = parseInt(document.getElementById('set-income').value) || 0;
+  s.variableBudget = parseInt(document.getElementById('set-variable-budget').value) || 0;
   s.bonus = parseInt(document.getElementById('set-bonus').value) || 0;
   saveSettingsObj(s);
+  renderHome();
   showToast('保存しました');
 }
 
@@ -3253,6 +3060,27 @@ function clearAllData() {
 }
 
 // ================================================================
+// 設定促進バナー（月収・変動費予算が未設定の場合）
+// ================================================================
+function renderSetupBanner(settings) {
+  const el = document.getElementById('setup-banner');
+  if (!el) return;
+  const noIncome = !settings.income || settings.income === 0;
+  const noBudget = !settings.variableBudget || settings.variableBudget === 0;
+  if (!noIncome && !noBudget) { el.style.display = 'none'; return; }
+
+  const items = [];
+  if (noIncome) items.push('月収（手取り）');
+  if (noBudget) items.push('変動費予算');
+
+  el.style.display = '';
+  el.innerHTML = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <div style="font-size:12px;color:#1e40af;line-height:1.5">⚙️ <strong>${items.join('・')}</strong>を設定すると残り予算・貯蓄率が表示されます</div>
+    <button onclick="showScreen('settings')" style="flex-shrink:0;padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">設定する</button>
+  </div>`;
+}
+
+// ================================================================
 // BACKUP REMINDER
 // ================================================================
 function renderBackupBanner() {
@@ -3262,19 +3090,24 @@ function renderBackupBanner() {
   const warned = localStorage.getItem('backup_warned');
   if (!warned) { el.style.display = 'none'; return; }
 
-  let msg = '';
-  if (!lastBackup) {
-    msg = '📦 まだバックアップが取られていません。データ消失に備えて保存を推奨します';
-  } else {
-    const days = Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000);
-    if (days < 7) { el.style.display = 'none'; return; }
-    msg = `📦 最後のバックアップから <strong>${days}日</strong> 経過しています`;
-  }
+  const days = lastBackup
+    ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000)
+    : null;
+
+  if (days !== null && days < 7) { el.style.display = 'none'; return; }
+
+  const isFirst = !lastBackup;
+  const bg    = isFirst ? '#fee2e2' : '#fff7ed';
+  const border= isFirst ? '#fca5a5' : '#fed7aa';
+  const color = isFirst ? '#991b1b' : '#92400e';
+  const msg   = isFirst
+    ? '⚠️ <strong>バックアップ未取得</strong>　ブラウザのデータ削除で全消滅します'
+    : `⚠️ <strong>最終バックアップから ${days}日</strong>　定期的な保存を推奨`;
 
   el.style.display = '';
-  el.innerHTML = `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-    <div style="font-size:12px;color:#92400e;line-height:1.5">${msg}</div>
-    <button onclick="exportData()" style="flex-shrink:0;padding:6px 12px;background:var(--warning);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">今すぐ保存</button>
+  el.innerHTML = `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <div style="font-size:12px;color:${color};line-height:1.5">${msg}</div>
+    <button onclick="exportData()" style="flex-shrink:0;padding:7px 12px;background:#ef4444;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">今すぐ保存</button>
   </div>`;
 }
 
