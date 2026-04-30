@@ -1926,29 +1926,35 @@ function parseStatementText(text) {
       const cols = line.split('\t').map(c => c.trim());
       const dateStr = parseDate(cols[0]);
       if (dateStr) {
-        // 日付以外の列から「最初の有効な金額（100〜2,000,000）」を探す
-        // クレカ明細: col[4]=利用金額 が多いが位置が変わることもあるので動的に検索
-        let amount = 0;
-        let amtColIdx = -1;
-        for (let i = 1; i < cols.length; i++) {
-          const v = parseInt(cols[i].replace(/[,，¥￥円]/g, ''));
-          if (!isNaN(v) && v >= 100 && v <= 2000000) {
-            amount = v;
-            amtColIdx = i;
-            break;
+        // ① 支払方法列（「払」「一括」「リボ」を含む列）を目印にする
+        //    クレカ明細はこの列の直後が「利用金額」
+        const payColIdx = cols.findIndex((c, i) => i >= 1 && /払|一括|リボ|分割/.test(c));
+
+        // ② 支払方法の後ろから「純粋な整数 100〜2,000,000」を探す
+        const searchFrom = payColIdx >= 1 ? payColIdx + 1 : 1;
+        let amount = 0, amtColIdx = -1;
+        for (let i = searchFrom; i < cols.length; i++) {
+          if (/^[\d,，]+$/.test(cols[i])) {  // 数字とカンマのみ
+            const v = parseInt(cols[i].replace(/[,，]/g, ''));
+            if (v >= 100 && v <= 2000000) { amount = v; amtColIdx = i; break; }
+          }
+        }
+        // 支払方法が見つからない場合は従来通り左から検索（フォールバック）
+        if (!amount) {
+          for (let i = 1; i < cols.length; i++) {
+            if (/^[\d,，]+$/.test(cols[i])) {
+              const v = parseInt(cols[i].replace(/[,，]/g, ''));
+              if (v >= 100 && v <= 2000000) { amount = v; amtColIdx = i; break; }
+            }
           }
         }
         if (!amount) continue;
-        // 店名: 日付列(0)・金額列・以降の数字列を除いた最初のテキスト列
-        let storeName = '';
-        for (let i = 1; i < amtColIdx; i++) {
-          if (cols[i] && !/^\d/.test(cols[i]) && !/^[一-龯ぁ-ん]{1}払/.test(cols[i]) && cols[i] !== '本人' && cols[i] !== '家族' && cols[i] !== 'ETC') {
-            storeName = cols[i];
-            break;
-          }
-        }
-        if (!storeName) storeName = cols[1] || '';
-        storeName = storeName.slice(0, 40);
+
+        // ③ 店名: 日付(0)〜支払方法の間のテキスト列を結合（本人/家族/ETC除外）
+        const nameEnd = payColIdx >= 1 ? payColIdx : amtColIdx;
+        const SKIP = /^(本人|家族|ETC)$/;
+        const nameParts = cols.slice(1, nameEnd).filter(c => c && !SKIP.test(c));
+        let storeName = (nameParts.join(' ') || cols[1] || '').trim().slice(0, 40);
         if (!storeName) continue;
         const cleanedName = cleanStoreName(storeName);
         results.push({ date: dateStr, name: cleanedName, amount, category: autoCategory(cleanedName), selected: true });
@@ -2412,7 +2418,7 @@ async function ocrPdfPages(pdf, onProgress) {
 // OCR結果を共通のPDF結果エリアに反映
 function showPdfParseResult(items, label) {
   if (items.length === 0) {
-    showToast('明細を読み取れませんでした。「AIで読み取る」タブをお試しください');
+    showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
     return;
   }
   parsedPdfItems = markDuplicates(items);
@@ -2488,12 +2494,35 @@ async function handlePdfFile(e) {
       progEl.style.display = 'none';
       showPdfParseResult(parseStatementText(fullText), 'OCR読み取り');
     } else {
+      // デジタルPDFとしてパース
+      const items = parseStatementText(fullText);
       progEl.style.display = 'none';
-      showPdfParseResult(parseStatementText(fullText), 'デジタルPDF');
+      if (items.length > 0) {
+        showPdfParseResult(items, 'デジタルPDF');
+      } else {
+        // テキストは抽出できたが明細が取れない → OCRで再試行
+        progEl.style.display = '';
+        progEl.innerHTML = '🔍 テキスト解析できず。OCRで再試行します…<br><small style="color:var(--gray-400)">初回は日本語データ取得に30〜60秒かかります</small>';
+        try {
+          const ocrText = await ocrPdfPages(pdf, pct => {
+            progEl.innerHTML = `🔍 OCR処理中… ${pct}%<br><small style="color:var(--gray-400)">しばらくお待ちください</small>`;
+          });
+          progEl.style.display = 'none';
+          const ocrItems = parseStatementText(ocrText);
+          if (ocrItems.length > 0) {
+            showPdfParseResult(ocrItems, 'OCR読み取り');
+          } else {
+            showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
+          }
+        } catch {
+          progEl.style.display = 'none';
+          showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
+        }
+      }
     }
   } catch (err) {
     progEl.style.display = 'none';
-    showToast('PDFの読み込みに失敗しました');
+    showToast('⚠️ PDFの読み込みに失敗しました（対応形式: クレジットカード明細PDF）');
     console.error(err);
   }
 }
