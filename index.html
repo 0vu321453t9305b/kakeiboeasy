@@ -1926,20 +1926,21 @@ function parseStatementText(text) {
       const cols = line.split('\t').map(c => c.trim());
       const dateStr = parseDate(cols[0]);
       if (dateStr) {
-        // ① 支払方法列（「払」「一括」「リボ」を含む列）を目印にする
-        //    クレカ明細はこの列の直後が「利用金額」
-        const payColIdx = cols.findIndex((c, i) => i >= 1 && /払|一括|リボ|分割/.test(c));
-
-        // ② 支払方法の後ろから「純粋な整数 100〜2,000,000」を探す
-        const searchFrom = payColIdx >= 1 ? payColIdx + 1 : 1;
-        let amount = 0, amtColIdx = -1;
-        for (let i = searchFrom; i < cols.length; i++) {
-          if (/^[\d,，]+$/.test(cols[i])) {  // 数字とカンマのみ
-            const v = parseInt(cols[i].replace(/[,，]/g, ''));
-            if (v >= 100 && v <= 2000000) { amount = v; amtColIdx = i; break; }
-          }
+        // ① 右端から連続する純数字列の開始位置を探す
+        //    クレカ明細末尾は「金額 0 金額 金額 0」の数字列
+        let numStart = cols.length;
+        for (let i = cols.length - 1; i >= 1; i--) {
+          if (/^[\d,，]+$/.test(cols[i])) numStart = i;
+          else break;
         }
-        // 支払方法が見つからない場合は従来通り左から検索（フォールバック）
+
+        // ② 数字列の中から最初の有効金額（100〜2,000,000）を取得
+        let amount = 0, amtColIdx = -1;
+        for (let i = numStart; i < cols.length; i++) {
+          const v = parseInt(cols[i].replace(/[,，]/g, ''));
+          if (v >= 100 && v <= 2000000) { amount = v; amtColIdx = i; break; }
+        }
+        // 右端法で取れない場合：左から走査（フォールバック）
         if (!amount) {
           for (let i = 1; i < cols.length; i++) {
             if (/^[\d,，]+$/.test(cols[i])) {
@@ -1947,13 +1948,15 @@ function parseStatementText(text) {
               if (v >= 100 && v <= 2000000) { amount = v; amtColIdx = i; break; }
             }
           }
+          if (amtColIdx >= 0) numStart = amtColIdx;
         }
         if (!amount) continue;
 
-        // ③ 店名: 日付(0)〜支払方法の間のテキスト列を結合（本人/家族/ETC除外）
-        const nameEnd = payColIdx >= 1 ? payColIdx : amtColIdx;
-        const SKIP = /^(本人|家族|ETC)$/;
-        const nameParts = cols.slice(1, nameEnd).filter(c => c && !SKIP.test(c));
+        // ③ 店名: date(0)〜numStart 間のテキスト列を結合
+        //    除外: 本人*/家族*/ETC*、純数字列、支払方法（払/一括/リボ）
+        const SKIP = /^(本人\*?|家族\*?|ETC\*?)$|^\d+$/;
+        const PAY  = /払|一括|リボ|分割/;
+        const nameParts = cols.slice(1, numStart).filter(c => c && !SKIP.test(c) && !PAY.test(c));
         let storeName = (nameParts.join(' ') || cols[1] || '').trim().slice(0, 40);
         if (!storeName) continue;
         const cleanedName = cleanStoreName(storeName);
@@ -2458,27 +2461,44 @@ async function handlePdfFile(e) {
         return by - ay;
       });
 
-      // 近いY座標（±4pt以内）を同一行としてグループ化
-      // ※lastYではなくlineStartY基準で判定することでドリフトを防ぐ
+      // ── 行再構成: hasEOL優先、なければY座標グループ化（±8pt）──
       const lines = [];
-      let currentLine = [], lineStartY = null;
-      for (const item of sorted) {
-        const y = item.transform ? item.transform[5] : 0;
-        if (lineStartY === null || Math.abs(y - lineStartY) < 4) {
+
+      // hasEOL が1件でも存在すれば それを使って行を分割
+      const hasEolSupport = items.some(it => it.hasEOL);
+      if (hasEolSupport) {
+        let currentLine = [];
+        for (const item of sorted) {
           currentLine.push(item);
-        } else {
-          if (currentLine.length > 0) {
-            currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
-            lines.push(currentLine.map(it => it.str).join('\t'));
+          if (item.hasEOL) {
+            if (currentLine.length > 0)
+              lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+            currentLine = [];
           }
-          currentLine = [item];
-          lineStartY = y;  // 新しい行の基準Y
         }
-        if (lineStartY === null) lineStartY = y;  // 最初のアイテム
-      }
-      if (currentLine.length > 0) {
-        currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
-        lines.push(currentLine.map(it => it.str).join('\t'));
+        if (currentLine.length > 0)
+          lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+      } else {
+        // Y座標グループ化（lineStartY基準で±8pt以内を同一行とする）
+        let currentLine = [], lineStartY = null;
+        for (const item of sorted) {
+          const y = item.transform ? item.transform[5] : 0;
+          if (lineStartY === null || Math.abs(y - lineStartY) < 8) {
+            currentLine.push(item);
+          } else {
+            if (currentLine.length > 0) {
+              currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+              lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+            }
+            currentLine = [item];
+            lineStartY = y;
+          }
+          if (lineStartY === null) lineStartY = y;
+        }
+        if (currentLine.length > 0) {
+          currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+          lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+        }
       }
       fullText += lines.join('\n') + '\n';
     }
