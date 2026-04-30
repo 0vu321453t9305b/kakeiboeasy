@@ -894,32 +894,9 @@
       <!-- ── タブ1: 明細貼り付け（paste）── -->
       <div id="receipt-tab-paste" style="padding:0 16px 16px">
 
-        <!-- 使い方ガイド（AIレシート読み取り） -->
-        <div style="background:var(--primary-light);border-radius:12px;padding:12px 14px;margin:12px 0 12px">
-          <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📋 AIでレシートを読み取る場合の手順</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:flex-start;gap:10px">
-              <div style="font-size:18px;flex-shrink:0">🤖</div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray-800)">① レシートをAIに送って以下を依頼</div>
-                <div style="font-size:10px;color:var(--gray-600);margin-top:3px;background:var(--white);border-radius:6px;padding:5px 8px;font-family:monospace;line-height:1.6">「このレシートの明細をCSV形式<br>（日付,店名,金額）で出力してください」</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:10px">
-              <div style="font-size:18px;flex-shrink:0">📋</div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray-800)">② 出力されたCSVテキストをコピー</div>
-                <div style="font-size:10px;color:var(--gray-500);margin-top:2px">Gemini / ChatGPT / Claude など</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:10px">
-              <div style="font-size:18px;flex-shrink:0">📥</div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:var(--gray-800)">③ 下のエリアに貼り付けて「解析」</div>
-                <div style="font-size:10px;color:var(--gray-500);margin-top:2px">カード明細テキストもそのまま貼り付けOK</div>
-              </div>
-            </div>
-          </div>
+        <div style="background:var(--primary-light);border-radius:12px;padding:12px 14px;margin:12px 0 12px;font-size:12px;color:var(--primary);line-height:1.7">
+          📋 カード明細テキストやCSVデータをそのまま貼り付けて「解析」できます。<br>
+          <span style="color:var(--gray-600)">例）日付,店名,金額 の形式でコピーして貼り付け</span>
         </div>
 
         <!-- テキストエリア -->
@@ -969,12 +946,6 @@
         <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px;line-height:1.6">
           カード会社・銀行アプリからエクスポートしたCSVを読み込みます。
         </div>
-        <!-- AIで登録済みデータとの重複注意 -->
-        <div style="background:#fff7ed;border-radius:10px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:10px;line-height:1.7">
-          ⚠️ <strong>レシートをAIで登録済みの場合</strong><br>
-          カード明細CSVを読み込むと、同じ支出が重複検出されます。<br>
-          解析後に「🗑 重複を除外」ボタンで一括削除できます。
-        </div>
         <label style="display:block;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:12px;padding:20px;text-align:center;cursor:pointer">
           <div style="font-size:28px">📂</div>
           <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:4px">CSVファイルを選択</div>
@@ -994,15 +965,10 @@
           </div>
         </div>
 
-        <div style="margin:20px 0 4px;border-top:1px solid var(--gray-200);padding-top:16px;font-size:13px;font-weight:700;color:var(--gray-700)">📄 PDFファイル（デジタル明細）</div>
-        <!-- PDF対応状況の案内 -->
-        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px">✅ スキャンPDF・画像PDFにも対応（OCR機能）</div>
-          <div style="font-size:12px;color:#166534;line-height:1.7">
-            📄 <strong>デジタルPDF</strong>：即時読み取り（銀行・カード会社サイトのPDF）<br>
-            📸 <strong>スキャンPDF・画像PDF</strong>：OCR処理で読み取り（初回30〜60秒）<br>
-            <span style="color:#6b7280">※OCR初回時は日本語データ（約30MB）をダウンロードします</span>
-          </div>
+        <div style="margin:20px 0 4px;border-top:1px solid var(--gray-200);padding-top:16px;font-size:13px;font-weight:700;color:var(--gray-700)">📄 PDFファイル（カード明細）</div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#1e40af;line-height:1.7">
+          📄 楽天カード・VISAなどのカード会社サイトからダウンロードしたPDFを読み込みます。<br>
+          <span style="color:#6b7280">※スキャン画像のPDFは非対応です。マイページからダウンロードしたPDFをご利用ください。</span>
         </div>
         <label style="display:block;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:12px;padding:20px;text-align:center;cursor:pointer">
           <div style="font-size:28px">📄</div>
@@ -1026,23 +992,6 @@
           </div>
         </div>
 
-        <!-- === 画像OCRセクション === -->
-        <div style="margin:20px 0 4px;border-top:1px solid var(--gray-200);padding-top:16px;font-size:13px;font-weight:700;color:var(--gray-700)">📸 レシート・明細画像（OCR読み取り）</div>
-        <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px;line-height:1.6">
-          スキャンしたレシートやスクリーンショット（JPG・PNG）をOCRで読み取ります。
-        </div>
-        <div style="font-size:11px;background:var(--warning-light);color:#92400e;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.6">
-          ⏳ 初回は日本語データ（約30MB）のダウンロードが発生します（30〜60秒）
-        </div>
-        <label style="display:block;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:12px;padding:20px;text-align:center;cursor:pointer">
-          <div style="font-size:28px">📸</div>
-          <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:4px">画像ファイルを選択</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">.jpg / .jpeg / .png</div>
-          <input type="file" id="image-ocr-input" accept=".jpg,.jpeg,.png,image/*" style="display:none" onchange="handleImageOcr(event)">
-        </label>
-        <div id="image-ocr-progress" style="display:none;text-align:center;padding:12px;font-size:13px;color:var(--gray-500)">
-          ⏳ OCR処理中…
-        </div>
       </div>
 
       <!-- ── タブ3: 手入力（manual）── -->
@@ -1958,7 +1907,7 @@ function parseStatementText(text) {
         const PAY  = /払|一括|リボ|分割/;
         const nameParts = cols.slice(1, numStart).filter(c => c && !SKIP.test(c) && !PAY.test(c));
         let storeName = (nameParts.join(' ') || cols[1] || '').trim().slice(0, 40);
-        if (!storeName) continue;
+        if (!storeName) storeName = '明細';
         const cleanedName = cleanStoreName(storeName);
         results.push({ date: dateStr, name: cleanedName, amount, category: autoCategory(cleanedName), selected: true });
         continue;
@@ -2432,46 +2381,9 @@ async function loadPdfJs() {
 }
 
 // Tesseract.js の動的ロード（初回のみCDNから取得）
-async function loadTesseract() {
-  if (window.Tesseract) return;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    s.onload = resolve; s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-// OCRワーカーを使ってPDFの各ページをOCR処理
-async function ocrPdfPages(pdf, onProgress) {
-  await loadTesseract();
-  const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, {
-    logger: m => {
-      if (m.status === 'recognizing text' && onProgress) {
-        onProgress(Math.round(m.progress * 100));
-      }
-    }
-  });
-  let fullText = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page    = await pdf.getPage(i);
-    const vp      = page.getViewport({ scale: 2.0 }); // 高解像度でOCR精度向上
-    const canvas  = document.createElement('canvas');
-    canvas.width  = vp.width;
-    canvas.height = vp.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-    const { data: { text } } = await worker.recognize(canvas);
-    fullText += text + '\n';
-    if (onProgress) onProgress(Math.round((i / pdf.numPages) * 100));
-  }
-  await worker.terminate();
-  return fullText;
-}
-
-// OCR結果を共通のPDF結果エリアに反映
 function showPdfParseResult(items, label) {
   if (items.length === 0) {
-    showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
+    showToast('⚠️ 明細を読み取れませんでした。デジタルPDF（カード会社マイページ）をご利用ください');
     return;
   }
   parsedPdfItems = markDuplicates(items);
@@ -2548,25 +2460,21 @@ async function handlePdfFile(e) {
     const rawJoined = allRawItems.map(it => it.str).join(' ');
     const meaningful = rawJoined.replace(/\s/g, '');
 
-    // テキストが少ない → スキャンPDFと判断してOCRにフォールバック
+    progEl.style.display = 'none';
+
     if (meaningful.length < 30) {
-      progEl.innerHTML = '🔍 スキャンPDFを検出。OCR処理を開始します…<br><small style="color:var(--gray-400)">初回は日本語データ取得に30〜60秒かかります</small>';
-      fullText = await ocrPdfPages(pdf, pct => {
-        progEl.innerHTML = `🔍 OCR処理中… ${pct}%<br><small style="color:var(--gray-400)">しばらくお待ちください</small>`;
-      });
-      progEl.style.display = 'none';
-      showPdfParseResult(parseStatementText(fullText), 'OCR読み取り');
+      // スキャンPDF（画像PDF）は非対応
+      showToast('⚠️ このPDFはスキャン画像のため読み取れません。デジタル明細PDFをお使いください');
     } else {
       // ── 方式A/B（行再構成）と方式C（日付アンカー）を比較して多い方を採用 ──
       const itemsAB = parseStatementText(fullText);           // Y軸再構成テキスト
       const itemsC  = parseStatementByDate(rawJoined);        // 生テキスト・日付アンカー
       const best    = itemsAB.length >= itemsC.length ? itemsAB : itemsC;
       const label   = itemsAB.length >= itemsC.length ? 'デジタルPDF' : 'デジタルPDF(日付解析)';
-      progEl.style.display = 'none';
       if (best.length > 0) {
         showPdfParseResult(best, label);
       } else {
-        showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
+        showToast('⚠️ 明細を読み取れませんでした。楽天カードなどのデジタル明細PDFをご利用ください');
       }
     }
   } catch (err) {
@@ -2576,37 +2484,6 @@ async function handlePdfFile(e) {
   }
 }
 
-// 画像ファイル（JPG/PNG）のOCR処理
-async function handleImageOcr(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const progEl = document.getElementById('image-ocr-progress');
-  progEl.style.display = '';
-  progEl.innerHTML = '🔍 OCR処理中…<br><small style="color:var(--gray-400)">初回は日本語データ取得に30〜60秒かかります</small>';
-
-  try {
-    await loadTesseract();
-    const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          progEl.innerHTML = `🔍 OCR処理中… ${Math.round(m.progress * 100)}%<br><small style="color:var(--gray-400)">しばらくお待ちください</small>`;
-        }
-      }
-    });
-    const { data: { text } } = await worker.recognize(file);
-    await worker.terminate();
-
-    progEl.style.display = 'none';
-    // PDF結果エリアを再利用して表示
-    showPdfParseResult(parseStatementText(text), '画像OCR');
-    document.getElementById('image-ocr-input').value = '';
-  } catch (err) {
-    progEl.style.display = 'none';
-    showToast('画像の読み込みに失敗しました');
-    console.error(err);
-  }
-}
 
 function applyPdfStatement() {
   const selected = parsedPdfItems.filter(i => i.selected);
