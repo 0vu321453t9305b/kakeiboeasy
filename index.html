@@ -2370,25 +2370,27 @@ let parsedPdfItems = [];
 // PDF.js の動的ロード
 async function loadPdfJs() {
   if (window.pdfjsLib) return;
+  // メインスクリプトを読み込む
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
     s.onload = resolve; s.onerror = reject;
     document.head.appendChild(s);
   });
-  // Android Chrome は cross-origin Worker をブロックするため
-  // Blob URL でラップして同一オリジン扱いにする
+  // WorkerをBlobでラップして同一オリジン化（Android Chrome対策）
   try {
     const workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const blob = new Blob(
-      [`importScripts('${workerUrl}');`],
-      { type: 'application/javascript' }
-    );
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
-  } catch (e) {
-    // フォールバック: 直接CDN URL（デスクトップ向け）
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const resp = await fetch(workerUrl);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+    } else {
+      throw new Error('fetch failed');
+    }
+  } catch(e) {
+    // フェッチ失敗時はfakeWorker（Workerなしモード）で動作
+    console.warn('[PDF] Worker fetch失敗、fakeWorkerで動作:', e);
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
   }
 }
 
@@ -2418,7 +2420,18 @@ async function handlePdfFile(e) {
 
   try {
     const ab  = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+    const pdf = await window.pdfjsLib.getDocument({
+      data: ab,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+      disableFontFace: true,
+    }).promise;
+    // 暗号化チェック
+    const pdfInfo = await pdf.getMetadata().catch(() => null);
+    console.log('[PDF DEBUG] メタデータ:', pdfInfo);
+    const perms = await pdf.getPermissions().catch(() => null);
+    console.log('[PDF DEBUG] パーミッション:', perms);
 
     // ── テキスト抽出（3方式を試して最良の結果を使用）──
     let allRawItems = [];
