@@ -2460,21 +2460,31 @@ async function handlePdfFile(e) {
     const rawJoined = allRawItems.map(it => it.str).join(' ');
     const meaningful = rawJoined.replace(/\s/g, '');
 
+    // ★デバッグ出力（確認後に削除）
+    console.log('[PDF DEBUG] 総ページ数:', pdf.numPages);
+    console.log('[PDF DEBUG] allRawItems件数:', allRawItems.length);
+    console.log('[PDF DEBUG] meaningful文字数:', meaningful.length);
+    console.log('[PDF DEBUG] fullText先頭500字:', fullText.slice(0, 500));
+    console.log('[PDF DEBUG] rawJoined先頭500字:', rawJoined.slice(0, 500));
+
     progEl.style.display = 'none';
 
     if (meaningful.length < 10) {
       // スキャンPDF（画像PDF）は非対応
-      console.warn('[PDF] スキャン判定: meaningful=' + meaningful.length);
+      console.warn('[PDF DEBUG] スキャン判定で弾かれました meaningful=' + meaningful.length);
       showToast('⚠️ このPDFはスキャン画像のため読み取れません。デジタル明細PDFをお使いください');
     } else {
       // ── 方式A/B（行再構成）と方式C（日付アンカー）を比較して多い方を採用 ──
       const itemsAB = parseStatementText(fullText);           // Y軸再構成テキスト
       const itemsC  = parseStatementByDate(rawJoined);        // 生テキスト・日付アンカー
+      console.log('[PDF DEBUG] itemsAB件数:', itemsAB.length);
+      console.log('[PDF DEBUG] itemsC件数:', itemsC.length);
       const best    = itemsAB.length >= itemsC.length ? itemsAB : itemsC;
       const label   = itemsAB.length >= itemsC.length ? 'デジタルPDF' : 'デジタルPDF(日付解析)';
       if (best.length > 0) {
         showPdfParseResult(best, label);
       } else {
+        console.warn('[PDF DEBUG] パース結果0件。fullText全文:', fullText);
         showToast('⚠️ 明細を読み取れませんでした。楽天カードなどのデジタル明細PDFをご利用ください');
       }
     }
