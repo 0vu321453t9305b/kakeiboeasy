@@ -1604,7 +1604,13 @@ function showScreen(name) {
   if (name === 'charts') { showChartTab('monthly'); }
   if (name === 'history') renderHistory();
   if (name === 'input') resetInputForm();
-  if (name === 'receipt') { showReceiptTab('paste'); }
+  if (name === 'receipt') {
+    // 前回の解析結果が残らないよう必ずクリア
+    clearCardStatement();
+    clearCsvStatement();
+    clearPdfResult();
+    showReceiptTab('paste');
+  }
   if (name === 'settings') renderSettings();
   if (name === 'invest') renderInvest();
 }
@@ -2065,13 +2071,43 @@ function removeDuplicates(varName, listId, countId) {
 }
 
 // 重複チェック：日付±3日 ＋ 金額一致（カード請求確定日のズレを許容）
+function normalizeStoreName(name) {
+  return (name || '').toLowerCase()
+    .replace(/[　\s・※【】（）()\-－]/g, '')
+    .replace(/[ァ-ン]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)) // カタカナ→ひらがな
+    .slice(0, 10);
+}
+
+function nameSimilar(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const minLen = Math.min(a.length, b.length);
+  if (minLen >= 4) {
+    return a.startsWith(b.slice(0, 4)) || b.startsWith(a.slice(0, 4));
+  }
+  return a === b;
+}
+
 function findDuplicate(item) {
-  const d2 = new Date(item.date).getTime();
+  const d2   = new Date(item.date).getTime();
+  const nameA = normalizeStoreName(item.name);
+
   return getEntries().find(e => {
     if (e.type !== 'expense') return false;
     if (e.amount !== item.amount) return false;
     const diff = Math.abs(new Date(e.date).getTime() - d2) / 86400000;
-    return diff <= 3; // ±3日以内 かつ 金額一致
+    if (diff > 3) return false;
+
+    // 同日 → 店名が似ていれば重複（店名不明なら金額+日付のみで判定）
+    if (diff === 0) {
+      const nameB = normalizeStoreName(e.memo || '');
+      return (nameA.length > 0 && nameB.length > 0)
+        ? nameSimilar(nameA, nameB)
+        : true;
+    }
+    // 日付ずれあり（1〜3日）→ 店名一致を必須条件にする
+    const nameB = normalizeStoreName(e.memo || '');
+    return nameSimilar(nameA, nameB);
   }) || null;
 }
 
@@ -2115,20 +2151,31 @@ let parsedCsvItems = [];
 function handleCsvFile(e) {
   const file = e.target.files[0];
   if (!file) return;
+  // まずShift-JISで試み、文字化け（U+FFFD）が多ければUTF-8で再試行
   const reader = new FileReader();
   reader.onload = ev => {
     const text = ev.target.result;
-    const items = parseCsvContent(text, file.name);
-    if (items.length === 0) { showToast('CSVから明細を読み取れませんでした'); return; }
-    parsedCsvItems = markDuplicates(items);
-    renderParsedList('csv-parse-list', parsedCsvItems, 'parsedCsvItems');
-    const dupCount = parsedCsvItems.filter(i => i.duplicate).length;
-    document.getElementById('csv-parse-count').textContent =
-      `${items.length}件検出` + (dupCount ? `（⚠️ 重複 ${dupCount}件 は自動除外）` : '');
-    document.getElementById('csv-parse-result').style.display = '';
-    showToast(`📂 ${items.length}件の明細を読み込みました`);
+    if ((text.match(/�/g) || []).length > 5) {
+      const reader2 = new FileReader();
+      reader2.onload = ev2 => processCsvText(ev2.target.result, file.name);
+      reader2.readAsText(file, 'UTF-8');
+    } else {
+      processCsvText(text, file.name);
+    }
   };
-  reader.readAsText(file, 'UTF-8');
+  reader.readAsText(file, 'Shift-JIS');
+}
+
+function processCsvText(text, filename) {
+  const items = parseCsvContent(text, filename);
+  if (items.length === 0) { showToast('CSVから明細を読み取れませんでした'); return; }
+  parsedCsvItems = markDuplicates(items);
+  renderParsedList('csv-parse-list', parsedCsvItems, 'parsedCsvItems');
+  const dupCount = parsedCsvItems.filter(i => i.duplicate).length;
+  document.getElementById('csv-parse-count').textContent =
+    `${items.length}件検出` + (dupCount ? `（⚠️ 重複 ${dupCount}件 は自動除外）` : '');
+  document.getElementById('csv-parse-result').style.display = '';
+  showToast(`📂 ${items.length}件の明細を読み込みました`);
 }
 
 function parseCsvContent(text, filename) {
@@ -2285,12 +2332,42 @@ async function handlePdfFile(e) {
     const ab  = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
 
-    // まずテキスト抽出を試みる
+    // まずテキスト抽出を試みる（Y座標でグループ化して行を正確に再構成）
     let fullText = '';
     for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const tc   = await page.getTextContent();
-      fullText  += tc.items.map(it => it.str).join(' ') + '\n';
+      const page  = await pdf.getPage(i);
+      const tc    = await page.getTextContent();
+      const items = tc.items.filter(it => it.str && it.str.trim());
+      if (items.length === 0) continue;
+
+      // Y座標（transform[5]）の降順でソート（PDF座標は下→上なので逆順=画面上→下）
+      const sorted = [...items].sort((a, b) => {
+        const ay = a.transform ? a.transform[5] : 0;
+        const by = b.transform ? b.transform[5] : 0;
+        return by - ay;
+      });
+
+      // 近いY座標（±5px以内）を同一行としてグループ化
+      const lines = [];
+      let currentLine = [], lastY = null;
+      for (const item of sorted) {
+        const y = item.transform ? item.transform[5] : 0;
+        if (lastY === null || Math.abs(y - lastY) < 5) {
+          currentLine.push(item);
+        } else {
+          if (currentLine.length > 0) {
+            currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+            lines.push(currentLine.map(it => it.str).join('\t'));
+          }
+          currentLine = [item];
+        }
+        lastY = y;
+      }
+      if (currentLine.length > 0) {
+        currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+        lines.push(currentLine.map(it => it.str).join('\t'));
+      }
+      fullText += lines.join('\n') + '\n';
     }
 
     const meaningful = fullText.replace(/\s/g, '');
@@ -2351,8 +2428,7 @@ function applyPdfStatement() {
   if (selected.length === 0) { showToast('取り込む項目を選択してください'); return; }
   selected.forEach(item => addEntry({ type: 'expense', amount: item.amount, date: item.date, category: item.category, memo: item.name }));
   showToast(`✅ ${selected.length}件を登録しました`);
-  parsedPdfItems = [];
-  document.getElementById('pdf-parse-result').style.display = 'none';
+  clearPdfResult(); // parsedPdfItems クリア + display:none + input リセットを一元管理
   showScreen('home');
 }
 
