@@ -2018,6 +2018,56 @@ function parseStatementText(text) {
   return results;
 }
 
+// ── 日付アンカー方式パーサー ──
+// PDF.js がY座標情報を提供しない場合のフォールバック。
+// 全テキストをスペース結合した生文字列から YYYY/MM/DD を錨にして明細を抽出。
+function parseStatementByDate(text) {
+  const results = [];
+  const currentYear = new Date().getFullYear();
+  const dateRe = /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/g;
+
+  // 全日付の位置を収集
+  const dates = [];
+  let m;
+  while ((m = dateRe.exec(text)) !== null) {
+    dates.push({
+      dateStr: `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`,
+      start: m.index, end: m.index + m[0].length
+    });
+  }
+
+  for (let i = 0; i < dates.length; i++) {
+    const { dateStr, end } = dates[i];
+    // この日付の直後〜次の日付の直前をセグメントとして切り出す
+    const segEnd = i + 1 < dates.length ? dates[i + 1].start : text.length;
+    const seg = text.slice(end, segEnd).replace(/\s+/g, ' ').trim();
+
+    // セグメント内の数字をすべて抽出（カンマ区切り対応）
+    const numRe = /(?:^|[\s\t])(\d{1,3}(?:[,，]\d{3})+|\d{3,7})(?=[\s\t]|$)/g;
+    const nums = [];
+    let nm;
+    while ((nm = numRe.exec(seg)) !== null) {
+      const v = parseInt(nm[1].replace(/[,，]/g, ''));
+      if (v >= 100 && v <= 2000000) nums.push({ v, idx: nm.index + nm[0].indexOf(nm[1]) });
+    }
+    if (nums.length === 0) continue;
+
+    const amount = nums[0].v;
+    const beforeAmt = seg.slice(0, nums[0].idx).trim();
+
+    // 店名: 数字より前のテキストからシステム語を除去
+    const storeName = beforeAmt
+      .replace(/本人\*?/g, '').replace(/家族\*?/g, '').replace(/ETC\*?/g, '')
+      .replace(/\d+回払い/g, '').replace(/一括払い?/g, '').replace(/リボ払い?/g, '')
+      .replace(/\s{2,}/g, ' ').trim().slice(0, 40);
+
+    if (!storeName) continue;
+    const cleanedName = cleanStoreName(storeName);
+    results.push({ date: dateStr, name: cleanedName, amount, category: autoCategory(cleanedName), selected: true });
+  }
+  return results;
+}
+
 // 店名からカテゴリを自動推定
 // 全角英数→半角、半角カタカナ→ひらがな（カテゴリ判定用正規化）
 function normalizeForCategory(name) {
@@ -2446,64 +2496,57 @@ async function handlePdfFile(e) {
     const ab  = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
 
-    // まずテキスト抽出を試みる（Y座標でグループ化して行を正確に再構成）
+    // ── テキスト抽出（3方式を試して最良の結果を使用）──
+    let allRawItems = [];
     let fullText = '';
     for (let i = 1; i <= pdf.numPages; i++) {
       const page  = await pdf.getPage(i);
       const tc    = await page.getTextContent();
       const items = tc.items.filter(it => it.str && it.str.trim());
       if (items.length === 0) continue;
+      allRawItems.push(...items);
 
-      // Y座標（transform[5]）の降順でソート（PDF座標は下→上なので逆順=画面上→下）
-      const sorted = [...items].sort((a, b) => {
-        const ay = a.transform ? a.transform[5] : 0;
-        const by = b.transform ? b.transform[5] : 0;
-        return by - ay;
-      });
-
-      // ── 行再構成: hasEOL優先、なければY座標グループ化（±8pt）──
-      const lines = [];
-
-      // hasEOL が1件でも存在すれば それを使って行を分割
+      // 方式A: hasEOL優先
       const hasEolSupport = items.some(it => it.hasEOL);
       if (hasEolSupport) {
-        let currentLine = [];
-        for (const item of sorted) {
-          currentLine.push(item);
-          if (item.hasEOL) {
-            if (currentLine.length > 0)
-              lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
-            currentLine = [];
-          }
+        const lines = [];
+        let cur = [];
+        for (const item of items) {
+          cur.push(item.str.trim());
+          if (item.hasEOL) { if (cur.length) lines.push(cur.filter(Boolean).join('\t')); cur = []; }
         }
-        if (currentLine.length > 0)
-          lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+        if (cur.length) lines.push(cur.filter(Boolean).join('\t'));
+        fullText += lines.join('\n') + '\n';
       } else {
-        // Y座標グループ化（lineStartY基準で±8pt以内を同一行とする）
-        let currentLine = [], lineStartY = null;
+        // 方式B: Y座標グループ化（±8pt）
+        const sorted = [...items].sort((a, b) =>
+          (b.transform ? b.transform[5] : 0) - (a.transform ? a.transform[5] : 0));
+        const lines = [];
+        let cur = [], lineStartY = null;
         for (const item of sorted) {
           const y = item.transform ? item.transform[5] : 0;
           if (lineStartY === null || Math.abs(y - lineStartY) < 8) {
-            currentLine.push(item);
+            cur.push(item);
           } else {
-            if (currentLine.length > 0) {
-              currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
-              lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+            if (cur.length) {
+              cur.sort((a, b) => (a.transform ? a.transform[4] : 0) - (b.transform ? b.transform[4] : 0));
+              lines.push(cur.map(it => it.str.trim()).filter(Boolean).join('\t'));
             }
-            currentLine = [item];
-            lineStartY = y;
+            cur = [item]; lineStartY = y;
           }
           if (lineStartY === null) lineStartY = y;
         }
-        if (currentLine.length > 0) {
-          currentLine.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
-          lines.push(currentLine.map(it => it.str.trim()).filter(Boolean).join('\t'));
+        if (cur.length) {
+          cur.sort((a, b) => (a.transform ? a.transform[4] : 0) - (b.transform ? b.transform[4] : 0));
+          lines.push(cur.map(it => it.str.trim()).filter(Boolean).join('\t'));
         }
+        fullText += lines.join('\n') + '\n';
       }
-      fullText += lines.join('\n') + '\n';
     }
 
-    const meaningful = fullText.replace(/\s/g, '');
+    // 方式C: 全アイテムをスペース結合した生テキスト（日付アンカーパーサー用）
+    const rawJoined = allRawItems.map(it => it.str).join(' ');
+    const meaningful = rawJoined.replace(/\s/g, '');
 
     // テキストが少ない → スキャンPDFと判断してOCRにフォールバック
     if (meaningful.length < 30) {
@@ -2514,30 +2557,16 @@ async function handlePdfFile(e) {
       progEl.style.display = 'none';
       showPdfParseResult(parseStatementText(fullText), 'OCR読み取り');
     } else {
-      // デジタルPDFとしてパース
-      const items = parseStatementText(fullText);
+      // ── 方式A/B（行再構成）と方式C（日付アンカー）を比較して多い方を採用 ──
+      const itemsAB = parseStatementText(fullText);           // Y軸再構成テキスト
+      const itemsC  = parseStatementByDate(rawJoined);        // 生テキスト・日付アンカー
+      const best    = itemsAB.length >= itemsC.length ? itemsAB : itemsC;
+      const label   = itemsAB.length >= itemsC.length ? 'デジタルPDF' : 'デジタルPDF(日付解析)';
       progEl.style.display = 'none';
-      if (items.length > 0) {
-        showPdfParseResult(items, 'デジタルPDF');
+      if (best.length > 0) {
+        showPdfParseResult(best, label);
       } else {
-        // テキストは抽出できたが明細が取れない → OCRで再試行
-        progEl.style.display = '';
-        progEl.innerHTML = '🔍 テキスト解析できず。OCRで再試行します…<br><small style="color:var(--gray-400)">初回は日本語データ取得に30〜60秒かかります</small>';
-        try {
-          const ocrText = await ocrPdfPages(pdf, pct => {
-            progEl.innerHTML = `🔍 OCR処理中… ${pct}%<br><small style="color:var(--gray-400)">しばらくお待ちください</small>`;
-          });
-          progEl.style.display = 'none';
-          const ocrItems = parseStatementText(ocrText);
-          if (ocrItems.length > 0) {
-            showPdfParseResult(ocrItems, 'OCR読み取り');
-          } else {
-            showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
-          }
-        } catch {
-          progEl.style.display = 'none';
-          showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
-        }
+        showToast('⚠️ 明細を読み取れませんでした。「スキャンPDF」タブのOCRをお試しください');
       }
     }
   } catch (err) {
