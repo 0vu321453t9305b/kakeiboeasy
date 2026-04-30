@@ -2367,31 +2367,17 @@ function clearCsvStatement() {
 // ================================================================
 let parsedPdfItems = [];
 
-// PDF.js の動的ロード
+// PDF.js の動的ロード（v4.9.155 legacy build / Android Chrome対応）
 async function loadPdfJs() {
   if (window.pdfjsLib) return;
-  // メインスクリプトを読み込む
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.src = 'https://unpkg.com/pdfjs-dist@4.9.155/legacy/build/pdf.js';
     s.onload = resolve; s.onerror = reject;
     document.head.appendChild(s);
   });
-  // WorkerをBlobでラップして同一オリジン化（Android Chrome対策）
-  try {
-    const workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const resp = await fetch(workerUrl);
-    if (resp.ok) {
-      const blob = await resp.blob();
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
-    } else {
-      throw new Error('fetch failed');
-    }
-  } catch(e) {
-    // フェッチ失敗時はfakeWorker（Workerなしモード）で動作
-    console.warn('[PDF] Worker fetch失敗、fakeWorkerで動作:', e);
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  }
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://unpkg.com/pdfjs-dist@4.9.155/legacy/build/pdf.worker.js';
 }
 
 // Tesseract.js の動的ロード（初回のみCDNから取得）
