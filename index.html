@@ -769,24 +769,33 @@
       <!-- Backup reminder banner (rendered by JS) -->
       <div id="backup-banner" style="display:none;margin:8px 16px 0"></div>
 
-      <!-- Hero -->
+      <!-- Hero: 変動費メイン -->
       <div class="hero-card">
-        <div class="hero-label">今月の支出</div>
-        <div class="hero-amount"><span>¥</span><span id="dash-total-expense">0</span></div>
+        <div class="hero-label">今月の変動費</div>
+        <div class="hero-amount"><span>¥</span><span id="dash-variable-expense">0</span></div>
         <div class="hero-row">
           <div class="hero-stat">
-            <div class="hero-stat-label">収入</div>
-            <div class="hero-stat-value" id="dash-income">¥0</div>
+            <div class="hero-stat-label">固定費</div>
+            <div class="hero-stat-value" id="dash-fixed-expense">¥0</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-label">支出合計</div>
+            <div class="hero-stat-value" id="dash-total-expense">¥0</div>
           </div>
           <div class="hero-stat">
             <div class="hero-stat-label">残り予算</div>
             <div class="hero-stat-value" id="dash-remaining">¥0</div>
           </div>
-          <div class="hero-stat">
-            <div class="hero-stat-label">貯蓄</div>
-            <div class="hero-stat-value" id="dash-savings">¥0</div>
-          </div>
         </div>
+      </div>
+
+      <!-- 固定費サマリー -->
+      <div class="card" id="fixed-summary-card" style="margin-top:8px;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:700;color:var(--gray-700)">🏠 今月の固定費</div>
+          <div style="font-size:18px;font-weight:700;color:#8b5cf6" id="fixed-summary-amount">¥0</div>
+        </div>
+        <div id="fixed-summary-detail" style="margin-top:6px;font-size:11px;color:var(--gray-500);line-height:1.8"></div>
       </div>
 
       <!-- Savings Rate -->
@@ -817,8 +826,8 @@
         </div>
       </div>
 
-      <!-- Category Breakdown -->
-      <div class="section-header">カテゴリ別支出</div>
+      <!-- Category Breakdown (変動費) -->
+      <div class="section-header">変動費の内訳</div>
       <div class="card" style="margin-top:0">
         <div id="cat-breakdown"></div>
       </div>
@@ -884,11 +893,11 @@
     <!-- ========== SCREEN: RECEIPT ========== -->
     <div class="screen" id="screen-receipt">
 
-      <!-- 3タブ -->
+      <!-- タブ（明細貼り付け・PDF/CSVは非表示。手入力に一本化） -->
       <div class="tab-bar" style="padding-top:8px">
-        <button class="tab-pill active" id="rtab-paste" onclick="showReceiptTab('paste')">💳 明細貼り付け</button>
-        <button class="tab-pill" id="rtab-file"         onclick="showReceiptTab('file')">📂 PDF・CSV</button>
-        <button class="tab-pill" id="rtab-manual"       onclick="showReceiptTab('manual')">✏️ 手入力</button>
+        <button class="tab-pill" id="rtab-paste" onclick="showReceiptTab('paste')" style="display:none">💳 明細貼り付け</button>
+        <button class="tab-pill" id="rtab-file"  onclick="showReceiptTab('file')"  style="display:none">📂 PDF・CSV</button>
+        <button class="tab-pill active" id="rtab-manual" onclick="showReceiptTab('manual')">✏️ 手入力</button>
       </div>
 
       <!-- ── タブ1: 明細貼り付け（paste）── -->
@@ -996,33 +1005,20 @@
 
       <!-- ── タブ3: 手入力（manual）── -->
       <div id="receipt-tab-manual" style="display:none; padding:0 16px 16px">
-        <div style="padding:12px 0 8px;font-size:13px;color:var(--gray-500)">支出を1件ずつ手動で入力します</div>
+
+        <!-- カテゴリ（ワンタップ） -->
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label" style="font-size:13px;font-weight:700;margin-bottom:8px">🏷️ カテゴリ</label>
+          <div id="manual-cat-btns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>
+        </div>
 
         <!-- 金額 -->
         <div class="form-group">
-          <label class="form-label">💰 金額（税込）</label>
+          <label class="form-label">💰 金額（円）</label>
           <input type="number" id="manual-amount" class="form-input"
-            placeholder="例: 1280"
-            style="font-size:28px;font-weight:700;color:var(--primary);text-align:right"
+            placeholder="0"
+            style="font-size:32px;font-weight:700;color:var(--primary);text-align:right;padding:12px 16px"
             inputmode="numeric">
-        </div>
-
-        <!-- カテゴリ -->
-        <div class="form-group">
-          <label class="form-label">🏷️ カテゴリ</label>
-          <div id="manual-cat-btns" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
-        </div>
-
-        <!-- 店名 -->
-        <div class="form-group">
-          <label class="form-label">🏪 店名（任意）</label>
-          <input type="text" id="manual-store" class="form-input" placeholder="例: イオン、スタバ">
-        </div>
-
-        <!-- メモ -->
-        <div class="form-group">
-          <label class="form-label">📝 メモ（任意）</label>
-          <input type="text" id="manual-memo" class="form-input" placeholder="例: ランチ代、日用品など">
         </div>
 
         <!-- 日付 -->
@@ -1031,8 +1027,15 @@
           <input type="date" id="manual-date" class="form-input">
         </div>
 
-        <button class="btn-primary" style="width:100%;font-size:16px;padding:14px;margin-top:4px"
-          onclick="applyManualEntry()">✅ 記録する</button>
+        <!-- メモ（任意） -->
+        <div class="form-group">
+          <label class="form-label">📝 メモ・店名（任意）</label>
+          <input type="text" id="manual-memo" class="form-input" placeholder="例: スーパー、ランチ代など">
+        </div>
+
+        <button class="btn-primary"
+          style="width:100%;font-size:18px;font-weight:700;padding:16px;margin-top:8px;border-radius:14px"
+          onclick="applyManualEntry()">＋ 登録する</button>
       </div>
 
       <div style="height:16px"></div>
@@ -1438,6 +1441,7 @@ const CATEGORIES = {
     { key: 'insurance',  emoji: '💊', name: '保険',       type: 'fixed',    color: '#84cc16' },
     { key: 'tax',        emoji: '💲', name: '税・社会保障',type: 'fixed',   color: '#6b7280' },
     { key: 'entertain',  emoji: '🎭', name: '娯楽・交際', type: 'variable', color: '#f43f5e' },
+    { key: 'eatout',     emoji: '🍺', name: '外食',       type: 'variable', color: '#fb923c' },
     { key: 'fashion',    emoji: '👗', name: '服飾・美容', type: 'variable', color: '#a855f7' },
     { key: 'travel',     emoji: '✈️', name: '旅行',       type: 'variable', color: '#0ea5e9' },
     { key: 'special',    emoji: '⭐', name: '特別支出',   type: 'variable', color: '#eab308' },
@@ -1558,7 +1562,7 @@ function showScreen(name) {
     clearCardStatement();
     clearCsvStatement();
     clearPdfResult();
-    showReceiptTab('paste');
+    showReceiptTab('manual');
   }
   if (name === 'settings') renderSettings();
   if (name === 'invest') renderInvest();
@@ -1590,17 +1594,41 @@ function renderHome() {
     return d.getFullYear() === y && d.getMonth() + 1 === m;
   });
 
-  const totalExpense = monthEntries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-  const totalIncome = monthEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const expEntries = monthEntries.filter(e => e.type === 'expense');
+  const totalExpense = expEntries.reduce((s, e) => s + e.amount, 0);
+  const totalIncome  = monthEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
   const settings = getSettings();
   const income = totalIncome > 0 ? totalIncome : (settings.income || 0);
   const savings = income - totalExpense;
   const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
 
-  document.getElementById('dash-total-expense').textContent = fmt(totalExpense);
-  document.getElementById('dash-income').textContent = '¥' + fmt(income);
+  // 変動費 / 固定費 に分類
+  const variableExpense = expEntries.filter(e => (CAT_MAP[e.category]?.type || 'variable') === 'variable')
+    .reduce((s, e) => s + e.amount, 0);
+  const fixedExpense = expEntries.filter(e => (CAT_MAP[e.category]?.type) === 'fixed')
+    .reduce((s, e) => s + e.amount, 0);
+
+  document.getElementById('dash-variable-expense').textContent = fmt(variableExpense);
+  document.getElementById('dash-fixed-expense').textContent = '¥' + fmt(fixedExpense);
+  document.getElementById('dash-total-expense').textContent = '¥' + fmt(totalExpense);
   document.getElementById('dash-remaining').textContent = '¥' + fmt(Math.max(0, income - totalExpense));
-  document.getElementById('dash-savings').textContent = '¥' + fmt(Math.max(0, savings));
+
+  // 固定費サマリーカード
+  const fixedCard = document.getElementById('fixed-summary-card');
+  if (fixedExpense > 0) {
+    fixedCard.style.display = '';
+    document.getElementById('fixed-summary-amount').textContent = '¥' + fmt(fixedExpense);
+    const fixedCatTotals = {};
+    expEntries.filter(e => CAT_MAP[e.category]?.type === 'fixed')
+      .forEach(e => { fixedCatTotals[e.category] = (fixedCatTotals[e.category] || 0) + e.amount; });
+    document.getElementById('fixed-summary-detail').innerHTML =
+      Object.entries(fixedCatTotals).map(([k, v]) => {
+        const c = CAT_MAP[k] || { emoji: '📦', name: k };
+        return `<span style="margin-right:12px">${c.emoji} ${c.name} ¥${fmt(v)}</span>`;
+      }).join('');
+  } else {
+    fixedCard.style.display = 'none';
+  }
 
   document.getElementById('detail-income').textContent = '¥' + fmt(income);
   document.getElementById('detail-expense').textContent = '¥' + fmt(totalExpense);
@@ -1608,7 +1636,7 @@ function renderHome() {
   document.getElementById('ring-rate').textContent = Math.max(0, savingsRate) + '%';
 
   renderRingChart(Math.max(0, Math.min(100, savingsRate)));
-  renderCatBreakdown(monthEntries, totalExpense);
+  renderCatBreakdown(monthEntries, variableExpense);
   renderRecentEntries(monthEntries.slice(0, 6));
   renderBackupBanner();
 }
@@ -1637,16 +1665,19 @@ function renderRingChart(rate) {
 }
 
 function renderCatBreakdown(entries, total) {
-  const expEntries = entries.filter(e => e.type === 'expense');
+  // 変動費のみ表示
+  const varEntries = entries.filter(e =>
+    e.type === 'expense' && (CAT_MAP[e.category]?.type || 'variable') === 'variable'
+  );
   const catTotals = {};
-  expEntries.forEach(e => {
+  varEntries.forEach(e => {
     catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
   });
 
-  const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const el = document.getElementById('cat-breakdown');
   if (sorted.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:14px">今月の支出はまだありません</div>';
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:14px">今月の変動費はまだありません</div>';
     return;
   }
   el.innerHTML = sorted.map(([key, amount]) => {
@@ -1778,8 +1809,21 @@ function showReceiptTab(tab) {
 }
 
 // ================================================================
-// 手入力タブ（支出専用・シンプル）
+// 手入力タブ（変動費特化）
 // ================================================================
+
+// 手入力タブ専用カテゴリ（変動費8種）
+const MANUAL_CATS = [
+  { key: 'food',     emoji: '🍔', name: '食費' },
+  { key: 'daily',    emoji: '🧹', name: '日用品' },
+  { key: 'car',      emoji: '🚗', name: '交通費' },
+  { key: 'fashion',  emoji: '👕', name: '衣服' },
+  { key: 'health',   emoji: '🏥', name: '医療' },
+  { key: 'entertain',emoji: '🎮', name: '娯楽' },
+  { key: 'eatout',   emoji: '🍺', name: '外食' },
+  { key: 'other',    emoji: '📦', name: 'その他' },
+];
+
 let manualSelectedCat = 'food';
 
 function initManualTab() {
@@ -1789,17 +1833,20 @@ function initManualTab() {
 }
 
 function renderManualCatBtns() {
-  const cats = CATEGORIES.expense || [];
   const el = document.getElementById('manual-cat-btns');
   if (!el) return;
-  el.innerHTML = cats.map(c => `
+  el.innerHTML = MANUAL_CATS.map(c => {
+    const sel = c.key === manualSelectedCat;
+    return `
     <button onclick="selectManualCat('${c.key}')"
-      style="padding:8px 4px;border-radius:10px;border:2px solid ${c.key === manualSelectedCat ? 'var(--primary)' : '#e5e7eb'};
-             background:${c.key === manualSelectedCat ? 'var(--primary-light)' : '#fff'};
-             cursor:pointer;text-align:center;font-size:11px;font-weight:600;
-             color:${c.key === manualSelectedCat ? 'var(--primary)' : 'var(--gray-600)'}">
-      <div style="font-size:18px">${c.emoji}</div>${c.name}
-    </button>`).join('');
+      style="padding:10px 4px 8px;border-radius:12px;border:2px solid ${sel ? 'var(--primary)' : '#e5e7eb'};
+             background:${sel ? 'var(--primary-light)' : '#fff'};
+             cursor:pointer;text-align:center;font-size:10px;font-weight:600;
+             color:${sel ? 'var(--primary)' : 'var(--gray-600)'}">
+      <div style="font-size:22px;line-height:1.2">${c.emoji}</div>
+      <div style="margin-top:2px">${c.name}</div>
+    </button>`;
+  }).join('');
 }
 
 function selectManualCat(key) {
@@ -1810,21 +1857,18 @@ function selectManualCat(key) {
 function applyManualEntry() {
   const amount = parseInt(document.getElementById('manual-amount').value);
   if (!amount || amount <= 0) { showToast('金額を入力してください'); return; }
-  const date     = document.getElementById('manual-date').value || today();
-  const storeVal = document.getElementById('manual-store')?.value || '';
-  const memoVal  = document.getElementById('manual-memo')?.value  || '';
-  const memo = memoVal || storeVal;
+  const date   = document.getElementById('manual-date').value || today();
+  const memo   = document.getElementById('manual-memo')?.value || '';
   const member = document.getElementById('entry-member')?.value || '自分';
 
   addEntry({ type: 'expense', amount, date, category: manualSelectedCat || 'other', memo, member });
   showToast(`✅ ¥${fmt(amount)} を登録しました`);
 
-  // フォームをリセット
+  // 金額・メモのみクリア（日付・カテゴリは維持して連続入力しやすく）
   document.getElementById('manual-amount').value = '';
-  if (document.getElementById('manual-store'))  document.getElementById('manual-store').value  = '';
-  if (document.getElementById('manual-memo'))   document.getElementById('manual-memo').value   = '';
-  document.getElementById('manual-date').value   = today();
-  showScreen('home');
+  if (document.getElementById('manual-memo')) document.getElementById('manual-memo').value = '';
+  // 金額欄にフォーカスを戻す
+  setTimeout(() => document.getElementById('manual-amount')?.focus(), 100);
 }
 
 // ================================================================
